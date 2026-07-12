@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Moizflix - Premium Edition</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js & GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        :root {
+            --netflix-red: #E50914;
+            --netflix-bg: #000000;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: var(--netflix-bg); 
+            color: #ffffff;
+            overflow: hidden; 
+        }
+
+        #main-app { display: flex; flex-direction: column; width: 100%; height: 100dvh; position: relative; }
+
+        .app-view { 
+            display: none; flex: 1; overflow-y: auto; overflow-x: hidden;
+            -webkit-overflow-scrolling: touch; padding-bottom: 90px; width: 100%;
+        }
+        .app-view.active { display: block; }
+
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; -webkit-tap-highlight-color: transparent; }
+
+        .glass-panel { background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%); }
+        .glass-nav { background: rgba(18, 18, 18, 0.95); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); position: absolute; bottom: 0; left: 0; right: 0; }
+        
+        .pt-safe { padding-top: env(safe-area-inset-top, 15px); }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+
+        .text-red-accent { color: var(--netflix-red); }
+        .bg-red-accent { background-color: var(--netflix-red); }
+
+        .movie-card { transition: transform 0.2s ease, filter 0.2s; border-radius: 4px; }
+        .movie-card:active { transform: scale(0.95); filter: brightness(0.7); }
+        .movie-card img { border-radius: 4px; }
+
+        .category-btn, .search-cat-btn { white-space: nowrap; transition: all 0.3s; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+        .category-btn.active, .search-cat-btn.active { background-color: #fff; color: #000; font-weight: 700; border-color: #fff; }
+
+        .nav-item { transition: color 0.3s; cursor: pointer; color: #737373; }
+        .nav-item.active { color: #fff; }
+
+        .search-box { background: #333; transition: all 0.3s; }
+        .search-box:focus-within { background: #444; border-color: #fff; }
+
+        #toast { position: fixed; top: -50px; left: 50%; transform: translateX(-50%); background: var(--netflix-red); color: white; padding: 12px 24px; border-radius: 4px; font-weight: 600; font-size: 14px; z-index: 200; opacity: 0; pointer-events: none; }
+        .hero-gradient { background: linear-gradient(to top, #000000 0%, transparent 100%); }
+        
+        .auth-input { background: #333; border-radius: 4px; border: 0; color: white; padding: 16px 20px; width: 100%; outline: none; transition: background 0.2s; }
+        .auth-input:focus { background: #444; }
+        
+        #auth-phone-wrapper:focus-within { background: #444; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } from { opacity: 0; transform: translateY(15px); } }
+
+        select { -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <!-- AD-FREE BANNER INFO -->
+    <div id="ad-free-banner" class="fixed top-0 w-full z-[1000] bg-[#0c1f36]/95 backdrop-blur-md border-b border-blue-500/30 p-4 pt-safe transform transition-transform duration-300">
+        <div class="max-w-md mx-auto relative pl-2 pr-6">
+            <button onclick="document.getElementById('ad-free-banner').style.display='none'" class="absolute right-0 top-0 p-1.5 bg-white/10 hover:bg-white/20 rounded-full active:scale-95 text-white transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <h3 class="text-white font-bold text-sm mb-1.5 flex items-center gap-1.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> 
+                Ad-Free Experience
+            </h3>
+            <p class="text-blue-200 text-xs mb-2.5 font-medium">For a better experience without player ads:</p>
+            <ol class="text-blue-100 text-[11px] list-decimal pl-4 space-y-1.5 font-medium">
+                <li>Go to <b>Settings > Connections</b> > <b>More Connection Settings</b>.</li>
+                <li>Tap <b>Private DNS</b>.</li>
+                <li>Enter <code class="bg-black/50 px-1.5 py-0.5 rounded text-white font-mono border border-white/10">dns.adguard.com</code> and hit Save.</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- 3D INTRO -->
+    <div id="intro-screen" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#000]">
+        <div id="canvas-container" class="absolute inset-0 z-0"></div>
+        <div class="relative z-10 flex flex-col items-center text-center px-6 w-full max-w-md mt-10">
+            <h1 id="intro-title" class="text-6xl md:text-8xl font-black mb-2 tracking-tighter text-red-accent" style="text-shadow: 0 4px 30px rgba(229, 9, 20, 0.5);">MOIZFLIX</h1>
+            <p id="intro-subtitle" class="text-gray-300 font-medium text-sm md:text-lg mb-8 max-w-sm">Unlimited movies, TV shows, and more.</p>
+            <button id="enter-btn" class="w-full py-4 bg-red-accent text-white font-bold rounded text-lg active:scale-95 transition-transform tracking-wide">GET STARTED</button>
+        </div>
+    </div>
+
+    <!-- CUSTOM ANIMATED ALERT MODAL -->
+    <div id="custom-alert" class="hidden fixed inset-0 z-[300] bg-black/80 backdrop-blur-md flex-col items-center justify-center px-4">
+        <div class="bg-[#181818] border border-white/10 rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl transform scale-95 opacity-0" id="custom-alert-box">
+            <div id="custom-alert-icon" class="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4"></div>
+            <h2 id="custom-alert-title" class="text-2xl font-bold text-white mb-2">Title</h2>
+            <p id="custom-alert-message" class="text-gray-300 text-sm mb-6 leading-relaxed">Message goes here.</p>
+            <button onclick="closeCustomAlert()" class="w-full bg-red-accent hover:bg-red-700 text-white py-3 rounded-xl font-bold active:scale-95 transition text-base shadow-lg">OK</button>
+        </div>
+    </div>
+
+    <!-- AUTHENTICATION SCREEN -->
+    <div id="auth-screen" class="hidden fixed inset-0 z-[90] bg-black flex flex-col pt-safe overflow-y-auto">
+        <div class="flex items-center justify-between px-6 py-4 mt-16">
+            <h1 class="text-2xl font-black tracking-tighter text-red-accent">MOIZFLIX</h1>
+        </div>
+        <div class="flex-grow flex flex-col justify-center px-8 pb-10">
+            <h2 id="auth-title" class="text-3xl font-bold mb-6 text-white">Sign In</h2>
+            <form id="auth-form" class="flex flex-col gap-4">
+                
+                <input type="text" id="auth-fullname" placeholder="Full Name" class="auth-input hidden">
+                <div id="auth-phone-wrapper" class="hidden flex items-center bg-[#333] rounded transition-colors overflow-hidden">
+                    <div class="flex items-center pl-4 pr-3 border-r border-gray-600 h-full text-white">
+                        <span class="mr-1.5 text-lg leading-none">🇵🇰</span>
+                        <span class="font-medium">+92</span>
+                    </div>
+                    <input type="tel" id="auth-phone" placeholder="300 1234567 (Optional)" class="flex-1 bg-transparent border-0 text-white py-4 px-4 outline-none w-full placeholder-gray-400">
+                </div>
+                
+                <input type="email" id="auth-email" placeholder="Email address" class="auth-input" required>
+                <input type="password" id="auth-password" placeholder="Password" class="auth-input" required minlength="6">
+                
+                <button type="submit" id="auth-btn" class="mt-4 w-full py-4 bg-red-accent text-white font-bold rounded text-base active:scale-95 transition-transform tracking-wide shadow-[0_4px_15px_rgba(229,9,20,0.4)]">
+                    Sign In
+                </button>
+            </form>
+            
+            <p class="text-gray-400 mt-10 text-sm font-medium text-center">
+                <span id="auth-toggle-text">New to Moizflix?</span> 
+                <a href="#" id="auth-toggle-link" class="text-white font-bold hover:underline">Sign up now.</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="main-app" class="hidden pt-12">
+        
+        <header class="glass-panel absolute top-0 w-full pt-safe z-40 h-[70px] flex items-center justify-between px-4 transition-all pointer-events-none mt-10" id="app-header">
+            <h1 class="text-2xl font-black tracking-tighter text-red-accent drop-shadow-md pointer-events-auto">MOIZFLIX</h1>
+            <div class="w-8 h-8 rounded-md bg-gray-600 overflow-hidden border border-gray-500 pointer-events-auto cursor-pointer" onclick="switchTab('profile', document.getElementById('nav-profile'))">
+                <img id="header-avatar" src="" class="w-full h-full object-cover">
+            </div>
+        </header>
+
+        <!-- VIEW 1: HOME -->
+        <main id="view-home" class="app-view active scroll-smooth relative">
+            <div id="home-hero" class="relative w-full aspect-[4/5] md:aspect-[16/9] mb-4 bg-gray-900">
+                <img id="home-hero-img" src="" class="w-full h-full object-cover opacity-80">
+                <div class="absolute inset-0 hero-gradient"></div>
+                <div class="absolute bottom-6 left-0 w-full px-6 flex flex-col items-center text-center">
+                    <h2 id="home-hero-title" class="text-4xl font-bold mb-4 text-white drop-shadow-md tracking-tight">Loading...</h2>
+                    <div class="flex gap-3 w-full max-w-sm justify-center">
+                        <button onclick="playHeroMovie('home')" class="flex-1 bg-white text-black py-2.5 rounded font-bold flex items-center justify-center gap-2 active:scale-95 transition"><svg width="24" height="24" viewBox="0 0 24 24" fill="black"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Play</button>
+                        <button onclick="saveHeroMovie('home')" class="flex-1 bg-[rgba(109,109,110,0.7)] text-white py-2.5 rounded font-bold flex items-center justify-center gap-2 active:scale-95 transition backdrop-blur-sm"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg> My List</button>
+                    </div>
+                </div>
+            </div>
+            <div class="px-4">
+                <div class="w-full overflow-x-auto flex gap-2 pb-4 mb-2 sticky top-[70px] z-30 pt-2 bg-gradient-to-b from-[#000] to-transparent">
+                    <button onclick="fetchCategory('trending', this, 'home')" class="category-btn active px-4 py-1.5 rounded-full text-sm">Trending</button>
+                    <button onclick="fetchCategory('hollywood', this, 'home')" class="category-btn px-4 py-1.5 rounded-full text-sm">Hollywood</button>
+                    <button onclick="fetchCategory('bollywood', this, 'home')" class="category-btn px-4 py-1.5 rounded-full text-sm">Bollywood</button>
+                    <button onclick="fetchCategory('action', this, 'home')" class="category-btn px-4 py-1.5 rounded-full text-sm">Action</button>
+                    <button onclick="fetchCategory('horror', this, 'home')" class="category-btn px-4 py-1.5 rounded-full text-sm">Horror</button>
+                </div>
+                <h2 id="home-title" class="text-lg font-bold mb-3 text-white">Trending Now</h2>
+                <div id="home-grid" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2"></div>
+            </div>
+        </main>
+
+        <!-- VIEW 2: SERIES -->
+        <main id="view-series" class="app-view scroll-smooth relative">
+            <div id="series-hero" class="relative w-full aspect-[4/5] md:aspect-[16/9] mb-4 bg-gray-900">
+                <img id="series-hero-img" src="" class="w-full h-full object-cover opacity-80">
+                <div class="absolute inset-0 hero-gradient"></div>
+                <div class="absolute bottom-6 left-0 w-full px-6 flex flex-col items-center text-center">
+                    <h2 id="series-hero-title" class="text-4xl font-bold mb-4 text-white drop-shadow-md tracking-tight">Loading...</h2>
+                    <div class="flex gap-3 w-full max-w-sm justify-center">
+                        <button onclick="playHeroMovie('series')" class="flex-1 bg-white text-black py-2.5 rounded font-bold flex items-center justify-center gap-2 active:scale-95 transition"><svg width="24" height="24" viewBox="0 0 24 24" fill="black"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Play</button>
+                        <button onclick="saveHeroMovie('series')" class="flex-1 bg-[rgba(109,109,110,0.7)] text-white py-2.5 rounded font-bold flex items-center justify-center gap-2 active:scale-95 transition backdrop-blur-sm"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg> My List</button>
+                    </div>
+                </div>
+            </div>
+            <div class="px-4">
+                <div class="w-full overflow-x-auto flex gap-2 pb-4 mb-2 sticky top-[70px] z-30 pt-2 bg-gradient-to-b from-[#000] to-transparent">
+                    <button onclick="fetchCategory('seriesTrending', this, 'series')" class="category-btn active px-4 py-1.5 rounded-full text-sm">Trending Series</button>
+                    <button onclick="fetchCategory('seriesNetflix', this, 'series')" class="category-btn px-4 py-1.5 rounded-full text-sm">Netflix Originals</button>
+                    <button onclick="fetchCategory('seriesKdrama', this, 'series')" class="category-btn px-4 py-1.5 rounded-full text-sm">K-Dramas</button>
+                    <button onclick="fetchCategory('seriesAnime', this, 'series')" class="category-btn px-4 py-1.5 rounded-full text-sm">Anime</button>
+                </div>
+                <h2 id="series-title" class="text-lg font-bold mb-3 text-white">Trending Series</h2>
+                <div id="series-grid" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2"></div>
+            </div>
+        </main>
+
+        <!-- VIEW 3: SEARCH -->
+        <main id="view-search" class="app-view relative">
+            <div class="sticky top-0 left-0 w-full z-40 bg-[#000] pt-safe px-4 pb-3 shadow-[0_10px_20px_rgba(0,0,0,0.9)] border-b border-white/10 mt-10">
+                <div class="search-box flex items-center rounded px-4 py-3 mt-4 mb-4">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8c8c8c" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" id="search-input" placeholder="Search movies, TV shows..." class="bg-transparent border-none outline-none text-white text-sm w-full ml-3 placeholder-gray-400 font-medium">
+                </div>
+                <h2 class="text-xs text-gray-400 font-bold mb-2 uppercase tracking-wider">Explore Categories</h2>
+                <div class="w-full overflow-x-auto flex gap-2 pb-1" id="search-categories">
+                    <button onclick="fetchSearchCategory('bollywood', this)" class="search-cat-btn active px-4 py-1.5 rounded-full text-sm">Bollywood</button>
+                    <button onclick="fetchSearchCategory('hollywood', this)" class="search-cat-btn px-4 py-1.5 rounded-full text-sm">Hollywood</button>
+                    <button onclick="fetchSearchCategory('southindian', this)" class="search-cat-btn px-4 py-1.5 rounded-full text-sm">South Indian</button>
+                    <button onclick="fetchSearchCategory('indonesian', this)" class="search-cat-btn px-4 py-1.5 rounded-full text-sm">Indonesian</button>
+                    <button onclick="fetchSearchCategory('korean', this)" class="search-cat-btn px-4 py-1.5 rounded-full text-sm">Korean</button>
+                    <button onclick="fetchSearchCategory('cartoon', this)" class="search-cat-btn px-4 py-1.5 rounded-full text-sm">Cartoon</button>
+                    <button onclick="fetchSearchCategory('horror', this)" class="search-cat-btn px-4 py-1.5 rounded-full text-sm">Horror</button>
+                    <button onclick="fetchSearchCategory('comedy', this)" class="search-cat-btn px-4 py-1.5 rounded-full text-sm">Funny</button>
+                </div>
+            </div>
+            <div id="search-grid" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 px-4 pt-4 pb-10"></div>
+        </main>
+
+        <!-- VIEW 4: MY LIST -->
+        <main id="view-downloads" class="app-view px-4 pt-[110px]">
+            <h2 class="text-lg font-bold mb-4 text-white">My List</h2>
+            <div id="downloads-grid" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2"></div>
+        </main>
+
+        <!-- VIEW 5: PROFILE -->
+        <main id="view-profile" class="app-view">
+            <div class="flex items-center justify-between pt-safe px-4 py-4 sticky top-0 bg-black z-10 border-b border-white/5 shadow-md mt-10">
+                <h1 class="text-2xl font-bold text-white tracking-tight">My Netflix</h1>
+                <div class="flex items-center gap-5">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" onclick="switchTab('search', document.getElementById('nav-search'))"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" onclick="openProfileSwitcher()"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center mt-8 relative">
+                <div class="relative w-[100px] h-[100px] cursor-pointer hover:scale-105 active:scale-95 transition-transform" onclick="openAvatarSelector()">
+                    <div class="w-full h-full rounded-md overflow-hidden bg-[#222] shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
+                        <img id="profile-main-avatar" src="" class="w-full h-full object-cover">
+                    </div>
+                    <div class="absolute -bottom-2 -right-2 bg-white text-black p-1.5 rounded-full shadow-lg border-2 border-black">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 mt-4 text-white font-bold text-xl active:scale-95 transition cursor-pointer" onclick="openProfileSwitcher()">
+                    <span id="profile-main-name">Name</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <p id="profile-email-display" class="text-sm text-gray-500 mt-1 font-medium"></p>
+                <div id="profile-pro-badge" class="hidden mt-2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black text-xs font-black px-2 py-1 rounded shadow-lg items-center gap-1">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> PREMIUM ACTIVE
+                </div>
+            </div>
+
+            <div class="mt-10 px-4 flex flex-col gap-6">
+                <div class="flex items-center justify-between active:scale-95 transition cursor-pointer" onclick="openSubModal()">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center shadow-md">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="black"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        </div>
+                        <span class="font-semibold text-white text-[15px]">Subscription Plans</span>
+                    </div>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="gray" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+
+                <div class="flex items-center justify-between active:scale-95 transition cursor-pointer">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center shadow-md"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div>
+                        <span class="font-semibold text-white text-[15px]">Notifications</span>
+                    </div>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="gray" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+
+                <div class="flex items-center justify-between active:scale-95 transition cursor-pointer" onclick="switchTab('downloads', document.getElementById('nav-list'))">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[#185adb] flex items-center justify-center shadow-md"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+                        <span class="font-semibold text-white text-[15px]">Downloads</span>
+                    </div>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="gray" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+            </div>
+
+            <div class="mt-8 border-t border-[#222] pt-4 px-4 pb-10 flex flex-col gap-5">
+                <button onclick="clearDownloads()" class="text-left font-semibold text-gray-300 hover:text-white active:scale-95 transition">Clear My List</button>
+                <button onclick="firebaseLogout()" class="text-left font-semibold text-gray-300 hover:text-white active:scale-95 transition">Sign Out</button>
+            </div>
+        </main>
+
+        <!-- 5-TAB BOTTOM NAVIGATION -->
+        <nav class="glass-nav z-50 flex justify-around items-center px-1 text-[10px] font-medium border-t border-white/10 h-[75px] pb-safe">
+            <div onclick="switchTab('home', this)" id="nav-home" class="nav-item active flex flex-col items-center gap-1.5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span>Home</span></div>
+            <div onclick="switchTab('series', this)" id="nav-series" class="nav-item flex flex-col items-center gap-1.5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg><span>Series</span></div>
+            <div onclick="switchTab('search', this)" id="nav-search" class="nav-item flex flex-col items-center gap-1.5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><span>Search</span></div>
+            <div onclick="switchTab('downloads', this)" id="nav-list" class="nav-item flex flex-col items-center gap-1.5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"></path></svg><span>My List</span></div>
+            <div onclick="switchTab('profile', this)" id="nav-profile" class="nav-item flex flex-col items-center gap-1.5"><div class="w-6 h-6 rounded overflow-hidden border border-gray-500"><img id="nav-avatar" src="" class="w-full h-full object-cover"></div><span>My Netflix</span></div>
+        </nav>
+    </div>
+
+    <!-- MOVIE/SERIES DETAILS MODAL -->
+    <div id="details-modal" class="hidden fixed inset-0 z-[60] bg-[#141414] flex-col overflow-y-auto pb-24">
+        <div class="fixed top-0 w-full pt-safe px-4 h-[70px] flex items-center z-20 bg-gradient-to-b from-[rgba(0,0,0,0.8)] to-transparent mt-10">
+            <button onclick="closeDetails()" class="text-white bg-black/50 p-2 rounded-full backdrop-blur-md active:scale-95"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+        </div>
+        <div class="relative w-full aspect-video bg-black mt-10">
+            <img id="detail-backdrop" src="" class="w-full h-full object-cover opacity-80" />
+            <div class="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent"></div>
+        </div>
+        <div class="px-4 -mt-8 relative z-10 flex flex-col gap-3">
+            <div class="flex items-center gap-2">
+                <h2 id="detail-title" class="text-3xl font-bold text-white leading-tight">Title</h2>
+                <div id="detail-pro-badge" class="hidden bg-gradient-to-r from-yellow-400 to-yellow-600 text-black text-[10px] font-black px-1.5 py-0.5 rounded shadow-lg flex items-center gap-1"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> PRO</div>
+            </div>
+            
+            <div class="flex items-center gap-3 text-sm font-medium">
+                <span class="text-green-500 font-bold" id="detail-match">98% Match</span>
+                <span class="text-gray-300" id="detail-year">2024</span>
+                <span class="bg-[#333] text-gray-300 px-1.5 py-0.5 rounded text-[10px] border border-gray-600" id="detail-type">HD</span>
+            </div>
+            
+            <button onclick="playMovie(currentDetailMovieId)" class="mt-2 w-full bg-white text-black py-2.5 rounded font-bold flex items-center justify-center gap-2 active:scale-95 transition text-base"><svg width="24" height="24" viewBox="0 0 24 24" fill="black"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Play</button>
+            <button onclick="saveMovieToLibrary(currentDetailMovieId)" class="w-full bg-[#2A2A2A] text-white py-2.5 rounded font-bold flex items-center justify-center gap-2 active:scale-95 transition text-base"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg> Add to My List</button>
+            
+            <p id="detail-overview" class="text-gray-300 text-[13px] leading-relaxed mt-2">Description...</p>
+
+            <div id="tv-controls" class="hidden mt-4 flex-col gap-2 p-4 bg-[#181818] rounded-md border border-white/10">
+                <h3 class="text-white font-bold text-sm mb-1 flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--netflix-red)" stroke-width="2.5"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg> Select Episode to Play</h3>
+                <div class="flex gap-2 w-full">
+                    <select id="season-select" onchange="loadEpisodes(currentDetailMovieId, this.value)" class="bg-[#333] text-white text-sm rounded px-3 py-2.5 w-1/3 outline-none border border-transparent focus:border-white transition font-medium"></select>
+                    <select id="episode-select" class="bg-[#333] text-white text-sm rounded px-3 py-2.5 w-2/3 outline-none border border-transparent focus:border-white transition font-medium"></select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUBSCRIPTION PLANS MODAL -->
+    <div id="sub-modal" class="hidden fixed inset-0 z-[200] bg-black/95 flex-col items-center justify-center px-4 backdrop-blur-md">
+        <button onclick="closeSubModal()" class="absolute top-16 right-6 text-white p-2 bg-white/10 rounded-full active:scale-95"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        <div class="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mb-4 mt-10">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        </div>
+        <h2 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 mb-2 text-center">UPGRADE TO PREMIUM</h2>
+        <p class="text-gray-400 text-sm mb-10 text-center px-4">Get unlimited access to all premium movies and series.</p>
+        
+        <div class="w-full max-w-sm flex flex-col gap-4">
+            <div onclick="selectPlan('7 Days', 30)" class="border border-yellow-500/30 bg-[#141414] p-5 rounded-xl cursor-pointer hover:border-yellow-500 transition active:scale-95 flex justify-between items-center shadow-lg relative overflow-hidden group">
+                <div class="absolute inset-0 bg-yellow-500/5 group-hover:bg-yellow-500/10 transition"></div>
+                <div class="relative"><h3 class="text-white font-bold text-lg">7 Days</h3><p class="text-gray-400 text-[11px] mt-0.5 uppercase tracking-wide">Short Term Access</p></div>
+                <div class="relative text-xl font-black text-yellow-500">30 Rs</div>
+            </div>
+            <div onclick="selectPlan('1 Month', 100)" class="border border-yellow-500 bg-yellow-500/10 p-5 rounded-xl cursor-pointer hover:bg-yellow-500/20 transition active:scale-95 flex justify-between items-center shadow-lg relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-transparent"></div>
+                <div class="absolute top-0 right-0 bg-yellow-500 text-black text-[9px] font-black px-2 py-1 rounded-bl-lg">BEST VALUE</div>
+                <div class="relative"><h3 class="text-white font-bold text-lg">1 Month</h3><p class="text-gray-400 text-[11px] mt-0.5 uppercase tracking-wide">Monthly Access</p></div>
+                <div class="relative text-xl font-black text-yellow-500">100 Rs</div>
+            </div>
+            <div onclick="selectPlan('1 Year', 1000)" class="border border-yellow-500/30 bg-[#141414] p-5 rounded-xl cursor-pointer hover:border-yellow-500 transition active:scale-95 flex justify-between items-center shadow-lg relative overflow-hidden group">
+                <div class="absolute inset-0 bg-yellow-500/5 group-hover:bg-yellow-500/10 transition"></div>
+                <div class="relative"><h3 class="text-white font-bold text-lg">1 Year</h3><p class="text-gray-400 text-[11px] mt-0.5 uppercase tracking-wide">Annual Access</p></div>
+                <div class="relative text-xl font-black text-yellow-500">1,000 Rs</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAYMENT MODAL -->
+    <div id="payment-modal" class="hidden fixed inset-0 z-[210] bg-black/95 flex-col items-center justify-center px-4 backdrop-blur-md">
+        <button onclick="closePaymentModal()" class="absolute top-16 right-6 text-white p-2 bg-white/10 rounded-full active:scale-95"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        
+        <div class="bg-[#181818] border border-white/10 rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl relative overflow-hidden mt-10">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-yellow-600"></div>
+            <h2 class="text-2xl font-bold text-white mb-2 mt-2">Complete Payment</h2>
+            <p class="text-gray-300 text-sm mb-6 leading-relaxed">Please send <strong id="pay-amount" class="text-yellow-500 text-lg">XX Rs</strong> via EasyPaisa to the account below, then send us a screenshot on WhatsApp to activate your account.</p>
+            
+            <div class="bg-black/40 p-4 rounded-xl border border-gray-700 mb-6 text-left shadow-inner">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <p class="text-gray-400 text-[10px] mb-0.5 uppercase tracking-wide font-semibold">EasyPaisa Name</p>
+                        <p class="text-white font-bold text-[17px]">Abdul Moiz Khokhar</p>
+                    </div>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e3/Easypaisa_logo.svg" alt="easypaisa" class="h-6 opacity-80 bg-white px-1 py-0.5 rounded">
+                </div>
+                <div>
+                    <p class="text-gray-400 text-[10px] mb-0.5 uppercase tracking-wide font-semibold">EasyPaisa Number</p>
+                    <p class="text-green-400 font-black text-[22px] tracking-widest">0370 4971063</p>
+                </div>
+            </div>
+
+            <button onclick="sendWhatsApp()" class="w-full bg-[#25D366] hover:bg-[#1EBE56] text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition text-base shadow-lg">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                Send Screenshot
+            </button>
+        </div>
+    </div>
+
+    <!-- PLAYER MODAL -->
+    <div id="player-modal" class="hidden fixed inset-0 z-[150] bg-black flex flex-col">
+        <div class="w-full h-[70px] pt-safe px-4 flex items-center justify-between bg-gradient-to-b from-black/90 to-transparent absolute top-0 z-20 pointer-events-none mt-10">
+            <button onclick="closePlayer()" class="text-white p-2 active:scale-95 transition pointer-events-auto bg-black/40 rounded-full backdrop-blur"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+        </div>
+        <div class="absolute top-[100px] left-0 w-full px-4 flex gap-2 overflow-x-auto z-20 pb-2">
+            <button onclick="changeServer('vidlink', this)" id="btn-vidlink" class="server-btn bg-red-accent text-white px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-lg">1: VidLink (Best Dubs)</button>
+            <button onclick="changeServer('smashy', this)" id="btn-smashy" class="server-btn bg-black/60 text-gray-300 border border-gray-600 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">2: SmashyStream</button>
+            <button onclick="changeServer('autoembed', this)" id="btn-autoembed" class="server-btn bg-black/60 text-gray-300 border border-gray-600 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">3: AutoEmbed</button>
+        </div>
+        <div class="flex-grow w-full h-full flex items-center justify-center bg-black pt-[140px] pb-safe z-10">
+            <!-- ADDED webkitallowfullscreen and mozallowfullscreen FOR NATIVE ROTATION -->
+            <iframe id="video-frame" class="w-full h-[80vh] md:h-full bg-black" src="" frameborder="0" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe>
+        </div>
+    </div>
+
+    <!-- PROFILE SWITCHER -->
+    <div id="profile-switcher-modal" class="hidden fixed inset-0 z-[150] bg-black/70 flex-col justify-end backdrop-blur-sm">
+        <div class="flex-grow w-full" onclick="closeProfileSwitcher()"></div>
+        <div id="profile-sheet-content" class="bg-[#262626] w-full rounded-t-3xl pt-6 pb-12 px-6 transform translate-y-full transition-transform duration-300">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-[22px] font-bold text-white tracking-tight">Switch Profiles</h3>
+                <button onclick="closeProfileSwitcher()" class="bg-[#333] p-1.5 rounded-full hover:bg-[#444] active:scale-95 transition"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+            <div class="flex flex-wrap gap-x-6 gap-y-6 justify-center items-start" id="profiles-list-container"></div>
+        </div>
+    </div>
+
+    <!-- FIREBASE AND SCRIPT LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD4qx0cLM_sNiPVp5ktJgegYgs9eCwhT04",
+            authDomain: "moizzflix.firebaseapp.com",
+            projectId: "moizzflix",
+            storageBucket: "moizzflix.firebasestorage.app",
+            messagingSenderId: "250580426950",
+            appId: "1:250580426950:web:686e2db93d027e245f37c7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const authForm = document.getElementById('auth-form');
+        const authTitle = document.getElementById('auth-title');
+        const authBtn = document.getElementById('auth-btn');
+        const authToggleLink = document.getElementById('auth-toggle-link');
+        const authToggleText = document.getElementById('auth-toggle-text');
+        
+        const inputName = document.getElementById('auth-fullname');
+        const inputPhoneWrapper = document.getElementById('auth-phone-wrapper');
+        const inputPhone = document.getElementById('auth-phone');
+        const inputEmail = document.getElementById('auth-email');
+        const inputPass = document.getElementById('auth-password');
+
+        let isLoginMode = true; 
+
+        authToggleLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            isLoginMode = !isLoginMode;
+            
+            inputName.classList.toggle('hidden', isLoginMode);
+            inputName.required = !isLoginMode;
+            
+            if(isLoginMode) {
+                inputPhoneWrapper.classList.add('hidden');
+                inputPhoneWrapper.classList.remove('flex');
+            } else {
+                inputPhoneWrapper.classList.remove('hidden');
+                inputPhoneWrapper.classList.add('flex');
+            }
+
+            authTitle.innerText = isLoginMode ? "Sign In" : "Sign Up";
+            authBtn.innerText = isLoginMode ? "Sign In" : "Create Account";
+            authToggleText.innerText = isLoginMode ? "New to Moizflix?" : "Already have an account?";
+            authToggleLink.innerText = isLoginMode ? "Sign up now." : "Sign in.";
+        });
+
+        const triggerAppEntry = (email, displayName) => {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('intro-screen').style.display = 'none';
+            
+            const mainApp = document.getElementById('main-app');
+            mainApp.classList.remove('hidden');
+            
+            document.getElementById('profile-email-display').innerText = email;
+
+            if (displayName && window.savedProfiles && window.savedProfiles[0]) {
+                window.savedProfiles[0].name = displayName;
+                if(window.loadProfileData) window.loadProfileData();
+            }
+
+            try {
+                if(typeof window.fetchMovies !== 'undefined') window.fetchMovies(window.endpoints.trending, 'home-grid', 'home');
+            } catch(e) {}
+            
+            if (typeof gsap !== 'undefined') gsap.from(mainApp, { opacity: 0, duration: 0.4 });
+        };
+
+        // ADMIN TEST ACCOUNTS (Bypass Check)
+        const bypassEmail = localStorage.getItem('instant_bypass_active');
+        if (bypassEmail === 'moize7171575@gmail.com') {
+            triggerAppEntry("moize7171575@gmail.com", "Abdul Moiz");
+        } else if (bypassEmail === 'kinganonymous482@gmail.com') {
+            triggerAppEntry("kinganonymous482@gmail.com", "Test User");
+        }
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = inputEmail.value.trim();
+            const password = inputPass.value;
+
+            // Admin Bypass Logic
+            if (email === "moize7171575@gmail.com" && password === "Moiz42372@") {
+                authBtn.innerText = "Success!"; authBtn.disabled = true;
+                localStorage.setItem('instant_bypass_active', 'moize7171575@gmail.com');
+                localStorage.setItem('user_premium_status', 'true'); 
+                setTimeout(() => { triggerAppEntry(email, "Abdul Moiz"); authBtn.disabled = false; authBtn.innerText = "Sign In"; }, 500);
+                return;
+            }
+            if (email === "kinganonymous482@gmail.com" && password === "Moiz42372@") {
+                authBtn.innerText = "Success!"; authBtn.disabled = true;
+                localStorage.setItem('instant_bypass_active', 'kinganonymous482@gmail.com');
+                localStorage.setItem('user_premium_status', 'false'); 
+                setTimeout(() => { triggerAppEntry(email, "Test User"); authBtn.disabled = false; authBtn.innerText = "Sign In"; }, 500);
+                return;
+            }
+
+            if (!isLoginMode) {
+                const passwordRegex = /^(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{6,}$/;
+                if (!passwordRegex.test(password)) {
+                    window.showCustomAlert("Weak Password", "Password must contain at least one capital letter and one special character (like @, #, $).", "warning");
+                    return;
+                }
+            }
+
+            authBtn.disabled = true;
+
+            try {
+                if (isLoginMode) {
+                    authBtn.innerText = "Signing in...";
+                    const cred = await signInWithEmailAndPassword(auth, email, password);
+                    
+                    // FIX: Go directly to app on login!
+                    triggerAppEntry(cred.user.email, cred.user.displayName);
+                    
+                    authBtn.innerText = "Sign In"; 
+                    authBtn.disabled = false;
+                } else {
+                    authBtn.innerText = "Registering...";
+                    const fullName = inputName.value.trim();
+                    let phoneVal = inputPhone.value.trim();
+                    if (phoneVal.startsWith('0')) phoneVal = phoneVal.substring(1);
+                    const finalPhone = phoneVal ? "+92" + phoneVal : "";
+                    
+                    const cred = await createUserWithEmailAndPassword(auth, email, password);
+                    
+                    updateProfile(cred.user, { displayName: fullName }).catch(()=>{});
+                    
+                    await setDoc(doc(db, "users", cred.user.uid), {
+                        fullName: fullName, 
+                        email: email, 
+                        phone: finalPhone, 
+                        plan: "Free", 
+                        joinDate: new Date().toISOString()
+                    });
+
+                    // FIX: Auto login and go directly to movies after signing up!
+                    triggerAppEntry(cred.user.email, fullName);
+                    
+                    authBtn.innerText = "Sign In";
+                    authBtn.disabled = false;
+                }
+            } catch (error) {
+                let errorMsg = "An error occurred.";
+                // Improved Error Tracking
+                if (error.code === 'auth/email-already-in-use') errorMsg = "This email is already registered. Please click 'Sign In' below.";
+                else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') errorMsg = "Incorrect email or password. Please check your spelling.";
+                else if (error.code === 'auth/user-not-found') errorMsg = "No account found with this email. Please click 'Sign up now' below.";
+                else if (error.code === 'auth/invalid-email') errorMsg = "The email address is typed incorrectly or has a hidden space.";
+                else errorMsg = error.message;
+
+                window.showCustomAlert("Error", errorMsg, "error");
+                authBtn.innerText = isLoginMode ? "Sign In" : "Create Account";
+                authBtn.disabled = false; 
+            }
+        });
+
+        let isInitialAuthCheck = true;
+        onAuthStateChanged(auth, (user) => {
+            if (!localStorage.getItem('instant_bypass_active') && user) {
+                // REAL-TIME PREMIUM SYNC
+                const userDocRef = doc(db, "users", user.uid);
+                onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const userData = docSnap.data();
+                        if (userData.plan === "Premium" || userData.isPremium === true) {
+                            localStorage.setItem('user_premium_status', 'true');
+                            document.getElementById('profile-pro-badge').classList.remove('hidden');
+                            document.getElementById('profile-pro-badge').classList.add('flex');
+                        } else {
+                            localStorage.setItem('user_premium_status', 'false');
+                            document.getElementById('profile-pro-badge').classList.add('hidden');
+                            document.getElementById('profile-pro-badge').classList.remove('flex');
+                        }
+                    }
+                });
+
+                if (isInitialAuthCheck && document.getElementById('main-app').classList.contains('hidden')) {
+                    triggerAppEntry(user.email, user.displayName);
+                }
+            }
+            isInitialAuthCheck = false;
+        });
+
+        window.firebaseLogout = function() {
+            if(confirm("Are you sure you want to log out?")) {
+                localStorage.removeItem('instant_bypass_active');
+                localStorage.removeItem('user_premium_status');
+                signOut(auth).catch(()=>{}); 
+
+                authForm.reset();
+                authBtn.disabled = false;
+                document.getElementById('main-app').classList.add('hidden');
+                document.getElementById('auth-screen').classList.remove('hidden');
+                
+                isLoginMode = true;
+                inputName.classList.add('hidden'); inputName.required = false;
+                inputPhoneWrapper.classList.add('hidden'); inputPhoneWrapper.classList.remove('flex');
+                authTitle.innerText = "Sign In";
+                authBtn.innerText = "Sign In";
+                authToggleText.innerText = "New to Moizflix?";
+                authToggleLink.innerText = "Sign up now.";
+            }
+        }
+    </script>
+
+    <!-- GENERAL APP LOGIC -->
+    <script>
+        let storageAvailable = true;
+        function getStorage(key, defaultVal) {
+            try { return localStorage.getItem(key) ? JSON.parse(localStorage.getItem(key)) : defaultVal; } 
+            catch(e) { storageAvailable = false; return defaultVal; }
+        }
+        function setStorage(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} }
+
+        const API_KEY = "236a2bd35efa3851b570de9c4ee6f3d2";
+        const IMG_URL = "https://image.tmdb.org/t/p/w500";
+        const BACKDROP_URL = "https://image.tmdb.org/t/p/w780";
+        
+        window.endpoints = {
+            trending: `https://api.themoviedb.org/3/trending/movie/day?api_key=${API_KEY}`,
+            bollywood: `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_original_language=hi&sort_by=popularity.desc`,
+            hollywood: `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_original_language=en&sort_by=popularity.desc`,
+            action: `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=28&sort_by=popularity.desc`,
+            horror: `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=27&sort_by=popularity.desc`,
+            
+            seriesTrending: `https://api.themoviedb.org/3/trending/tv/day?api_key=${API_KEY}`,
+            seriesNetflix: `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&with_networks=213&sort_by=popularity.desc`,
+            seriesKdrama: `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&with_original_language=ko&sort_by=popularity.desc`,
+            seriesAnime: `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&with_genres=16&sort_by=popularity.desc`,
+
+            southindian: `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_original_language=te|ta|ml|kn&sort_by=popularity.desc`,
+            indonesian: `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_original_language=id&sort_by=popularity.desc`,
+            korean: `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_original_language=ko&sort_by=popularity.desc`,
+            cartoon: `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=16&sort_by=popularity.desc`,
+            comedy: `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=35&sort_by=popularity.desc`
+        };
+
+        const globalMovieData = {};
+        let currentDetailMovieId = null;
+        let currentPlayingMovieId = null;
+        let homeHeroMovieId = null;
+        let seriesHeroMovieId = null;
+        
+        window.premiumMovieIds = new Set();
+        
+        const DEFAULT_AVATAR = "https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png";
+        let myDownloads = getStorage('moizflix_downloads', []);
+        
+        let savedProfiles = getStorage('moizflix_profiles', [ { id: 1, name: 'User', avatarUrl: DEFAULT_AVATAR } ]);
+        window.savedProfiles = savedProfiles; 
+        
+        let activeProfileId = 1;
+        try { activeProfileId = parseInt(localStorage.getItem('moizflix_active_profile')) || savedProfiles[0].id; } catch(e) { activeProfileId = savedProfiles[0].id; }
+
+        function getActiveProfile() { return savedProfiles.find(p => p.id === activeProfileId) || savedProfiles[0]; }
+        
+        window.loadProfileData = function() {
+            const profile = getActiveProfile();
+            let finalAvatar = profile.avatarUrl || DEFAULT_AVATAR;
+            document.getElementById('header-avatar').src = finalAvatar;
+            document.getElementById('nav-avatar').src = finalAvatar;
+            document.getElementById('profile-main-avatar').src = finalAvatar;
+            document.getElementById('profile-main-name').innerText = profile.name;
+            try { localStorage.setItem('moizflix_active_profile', activeProfileId); } catch(e) {}
+            setStorage('moizflix_profiles', savedProfiles);
+        }
+
+        let selectedPlanName = "";
+        let selectedPlanAmount = 0;
+
+        window.isPremiumMovie = function(id) {
+            return window.premiumMovieIds.has(id);
+        }
+
+        window.openSubModal = function() {
+            document.getElementById('sub-modal').classList.remove('hidden');
+            document.getElementById('sub-modal').classList.add('flex');
+            if(typeof gsap !== 'undefined') gsap.fromTo('#sub-modal', { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.3 });
+        }
+        window.closeSubModal = function() {
+            document.getElementById('sub-modal').classList.add('hidden');
+            document.getElementById('sub-modal').classList.remove('flex');
+        }
+
+        window.selectPlan = function(name, amount) {
+            selectedPlanName = name;
+            selectedPlanAmount = amount;
+            document.getElementById('pay-amount').innerText = amount + " Rs";
+            closeSubModal();
+            document.getElementById('payment-modal').classList.remove('hidden');
+            document.getElementById('payment-modal').classList.add('flex');
+            if(typeof gsap !== 'undefined') gsap.fromTo('#payment-modal', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.3 });
+        }
+        window.closePaymentModal = function() {
+            document.getElementById('payment-modal').classList.add('hidden');
+            document.getElementById('payment-modal').classList.remove('flex');
+        }
+
+        window.sendWhatsApp = function() {
+            const phoneNumber = "923207171575";
+            const message = encodeURIComponent(`Hello Abdul Moiz Khokhar,\n\nI have just paid *${selectedPlanAmount} Rs* via EasyPaisa for the *${selectedPlanName}* subscription on Moizflix.\n\nAttached is my payment screenshot for verification.`);
+            window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
+            closePaymentModal();
+        }
+
+        window.openProfileSwitcher = function() {
+            const container = document.getElementById('profiles-list-container'); container.innerHTML = "";
+            savedProfiles.forEach(p => {
+                const isActive = p.id === activeProfileId;
+                const borderClass = isActive ? "border-2 border-white" : "border-2 border-transparent";
+                const textClass = isActive ? "text-white font-bold" : "text-gray-400 font-medium";
+                let finalAvatar = p.avatarUrl || DEFAULT_AVATAR;
+                container.innerHTML += `
+                    <div class="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition" onclick="switchProfile(${p.id})">
+                        <div class="w-[70px] h-[70px] rounded-md overflow-hidden ${borderClass}"><img src="${finalAvatar}" class="w-full h-full object-cover"></div>
+                        <span class="${textClass} text-sm">${p.name}</span>
+                    </div>`;
+            });
+            const modal = document.getElementById('profile-switcher-modal');
+            const sheet = document.getElementById('profile-sheet-content');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            setTimeout(() => { sheet.classList.remove('translate-y-full'); }, 10);
+        }
+
+        window.closeProfileSwitcher = function() {
+            const modal = document.getElementById('profile-switcher-modal');
+            const sheet = document.getElementById('profile-sheet-content');
+            sheet.classList.add('translate-y-full');
+            setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 300);
+        }
+
+        window.switchProfile = function(id) {
+            activeProfileId = id; loadProfileData(); closeProfileSwitcher();
+            fetchMovies(endpoints.trending, 'home-grid', 'home');
+        }
+
+        window.openAvatarSelector = function() {
+            document.getElementById('avatar-modal').classList.remove('hidden');
+            document.getElementById('avatar-modal').classList.add('flex');
+            document.getElementById('avatar-search-input').value = "";
+            document.getElementById('avatar-media-grid').innerHTML = "";
+            document.getElementById('avatar-characters-grid').classList.add('hidden');
+            document.getElementById('avatar-media-grid').classList.remove('hidden');
+            document.getElementById('avatar-modal-title').innerText = "Choose Avatar";
+        }
+        window.closeAvatarSelector = function() {
+            document.getElementById('avatar-modal').classList.add('hidden');
+            document.getElementById('avatar-modal').classList.remove('flex');
+        }
+
+        let avatarSearchTimeout = null;
+        document.getElementById('avatar-search-input').addEventListener('input', function(e) {
+            clearTimeout(avatarSearchTimeout);
+            const query = e.target.value.trim();
+            const grid = document.getElementById('avatar-media-grid');
+            document.getElementById('avatar-characters-grid').classList.add('hidden');
+            grid.classList.remove('hidden');
+            document.getElementById('avatar-modal-title').innerText = "Choose Avatar";
+
+            if(query.length > 0) {
+                grid.innerHTML = "<p class='col-span-full text-center text-gray-500 mt-5'>Searching...</p>";
+                avatarSearchTimeout = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}`);
+                        const data = await res.json();
+                        grid.innerHTML = "";
+                        data.results.forEach(m => {
+                            if(m.media_type !== 'movie' && m.media_type !== 'tv') return;
+                            if(!m.poster_path) return;
+                            grid.innerHTML += `
+                                <div class="cursor-pointer active:scale-95 transition" onclick="loadAvatarCharacters(${m.id}, '${m.media_type}')">
+                                    <img src="${IMG_URL + m.poster_path}" class="w-full aspect-[2/3] object-cover rounded shadow-md">
+                                    <p class="text-[10px] text-gray-300 mt-1 truncate text-center">${m.title || m.name}</p>
+                                </div>`;
+                        });
+                        if(grid.innerHTML === "") grid.innerHTML = "<p class='col-span-full text-center text-gray-500 mt-5'>No results found.</p>";
+                    } catch(e) {}
+                }, 500);
+            } else grid.innerHTML = "";
+        });
+
+        window.loadAvatarCharacters = async function(mediaId, type) {
+            document.getElementById('avatar-media-grid').classList.add('hidden');
+            const charGrid = document.getElementById('avatar-characters-grid');
+            charGrid.classList.remove('hidden');
+            charGrid.innerHTML = "<p class='col-span-full text-center text-gray-500 mt-5'>Loading Characters...</p>";
+            document.getElementById('avatar-modal-title').innerText = "Select Character";
+
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/${type}/${mediaId}/credits?api_key=${API_KEY}`);
+                const data = await res.json();
+                charGrid.innerHTML = "";
+                const casts = data.cast.filter(c => c.profile_path).slice(0, 24);
+                casts.forEach(c => {
+                    const hqImage = IMG_URL + c.profile_path;
+                    charGrid.innerHTML += `
+                        <div class="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition" onclick="setNewAvatar('${hqImage}')">
+                            <div class="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent hover:border-white shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
+                                <img src="${hqImage}" class="w-full h-full object-cover bg-[#222]">
+                            </div>
+                            <span class="text-[11px] text-gray-300 text-center leading-tight font-medium w-full truncate px-1">${c.character || c.name}</span>
+                        </div>`;
+                });
+                if(charGrid.innerHTML === "") charGrid.innerHTML = "<p class='col-span-full text-center text-gray-500 mt-5'>No characters found with images.</p>";
+            } catch(e) {}
+        }
+
+        window.setNewAvatar = function(imgUrl) {
+            const profile = getActiveProfile();
+            profile.avatarUrl = imgUrl;
+            loadProfileData();
+            closeAvatarSelector();
+            window.showCustomAlert("Avatar Updated", "Your profile picture has been saved.", "success");
+        }
+
+        window.switchTab = function(tabId, btnElement) {
+            if(btnElement) {
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                btnElement.classList.add('active');
+            }
+            document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
+            const targetView = document.getElementById(`view-${tabId}`);
+            targetView.classList.add('active');
+            
+            const mainHeader = document.getElementById('app-header');
+            if (tabId === 'profile' || tabId === 'search') mainHeader.classList.add('hidden');
+            else mainHeader.classList.remove('hidden');
+
+            if (tabId === 'downloads') loadDownloadsView();
+            if (tabId === 'search' && document.getElementById('search-grid').innerHTML === '') { fetchSearchCategory('bollywood', document.querySelector('.search-cat-btn.active')); }
+            if (tabId === 'series' && document.getElementById('series-grid').innerHTML === '') { fetchMovies(endpoints.seriesTrending, 'series-grid', 'series'); }
+
+            targetView.scrollTop = 0;
+            if(typeof gsap !== 'undefined') gsap.fromTo(targetView, { opacity: 0 }, { opacity: 1, duration: 0.2 });
+        }
+
+        window.fetchMovies = async function(url, targetGridId, heroPrefix = null) {
+            const grid = document.getElementById(targetGridId);
+            grid.innerHTML = "<p class='text-gray-500 font-medium col-span-full text-center mt-10 text-sm'>Loading...</p>";
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                renderMovieCards(data.results, targetGridId, heroPrefix);
+            } catch (error) {
+                grid.innerHTML = "<p class='text-red-500 font-medium col-span-full text-center mt-10 text-sm'>Connection Error</p>";
+            }
+        }
+
+        function renderMovieCards(movies, gridId, heroPrefix) {
+            const grid = document.getElementById(gridId);
+            grid.innerHTML = ""; 
+            if(!movies || movies.length === 0) return;
+            
+            window.premiumMovieIds.clear(); 
+            const proCount = Math.min(5, movies.length);
+            if(proCount > 0) {
+                let indices = Array.from({length: movies.length}, (_, i) => i);
+                indices.sort(() => 0.5 - Math.random());
+                let selectedIndices = indices.slice(0, proCount);
+                
+                selectedIndices.forEach(idx => {
+                    window.premiumMovieIds.add(movies[idx].id);
+                });
+            }
+            
+            if(heroPrefix) {
+                const hero = movies[0]; 
+                hero.is_tv = !!hero.first_air_date || !!hero.name;
+                globalMovieData[hero.id] = hero;
+                if(heroPrefix === 'home') homeHeroMovieId = hero.id;
+                else if(heroPrefix === 'series') seriesHeroMovieId = hero.id;
+                
+                document.getElementById(`${heroPrefix}-hero-img`).src = hero.poster_path ? (BACKDROP_URL + hero.poster_path) : "";
+                document.getElementById(`${heroPrefix}-hero-title`).innerText = hero.title || hero.name;
+                movies = movies.slice(1); 
+            }
+
+            movies.forEach((movie, index) => {
+                if(!movie.poster_path) return;
+                movie.is_tv = !!movie.first_air_date || !!movie.name;
+                globalMovieData[movie.id] = movie;
+                
+                const isPro = isPremiumMovie(movie.id);
+                const proBadge = isPro ? `<div class="absolute top-1.5 right-1.5 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg z-10 flex items-center gap-0.5"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>PRO</div>` : "";
+
+                grid.innerHTML += `
+                    <div class="movie-card cursor-pointer relative" onclick="showMovieDetails(${movie.id})" style="opacity:0; animation: fadeIn 0.4s ease forwards ${index * 0.03}s;">
+                        ${proBadge}
+                        <img src="${IMG_URL + movie.poster_path}" alt="Poster" class="w-full aspect-[2/3] object-cover bg-[#222]" loading="lazy">
+                    </div>`;
+            });
+        }
+
+        window.fetchCategory = function(categoryKey, btnElement, viewPrefix) {
+            const viewContainer = document.getElementById(`view-${viewPrefix}`);
+            viewContainer.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-white', 'text-black', 'font-bold', 'border-white');
+                btn.classList.add('bg-[rgba(255,255,255,0.1)]', 'text-white', 'border-[rgba(255,255,255,0.2)]');
+            });
+            btnElement.classList.remove('bg-[rgba(255,255,255,0.1)]', 'text-white', 'border-[rgba(255,255,255,0.2)]');
+            btnElement.classList.add('active', 'bg-white', 'text-black', 'font-bold', 'border-white');
+            document.getElementById(`${viewPrefix}-title`).innerText = btnElement.innerText;
+            fetchMovies(endpoints[categoryKey], `${viewPrefix}-grid`, viewPrefix);
+        }
+
+        window.fetchSearchCategory = function(categoryKey, btnElement) {
+            document.getElementById('search-input').value = ""; 
+            document.querySelectorAll('.search-cat-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-white', 'text-black', 'font-bold', 'border-white');
+                btn.classList.add('bg-[rgba(255,255,255,0.1)]', 'text-white', 'border-[rgba(255,255,255,0.2)]');
+            });
+            btnElement.classList.remove('bg-[rgba(255,255,255,0.1)]', 'text-white', 'border-[rgba(255,255,255,0.2)]');
+            btnElement.classList.add('active', 'bg-white', 'text-black', 'font-bold', 'border-white');
+            fetchMovies(endpoints[categoryKey], 'search-grid', null);
+        }
+
+        let searchTimeout = null;
+        document.getElementById('search-input').addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            if(query.length > 0) {
+                document.querySelectorAll('.search-cat-btn').forEach(btn => {
+                    btn.classList.remove('active', 'bg-white', 'text-black', 'font-bold', 'border-white');
+                    btn.classList.add('bg-[rgba(255,255,255,0.1)]', 'text-white', 'border-[rgba(255,255,255,0.2)]');
+                });
+                document.getElementById('search-grid').innerHTML = "<p class='text-gray-500 font-medium col-span-full text-center mt-10 text-sm'>Searching...</p>";
+                searchTimeout = setTimeout(() => {
+                    fetchMovies(`https://api.themoviedb.org/3/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}`, 'search-grid', null);
+                }, 500); 
+            } else {
+                fetchSearchCategory('bollywood', document.querySelector('.search-cat-btn.active') || document.querySelector('.search-cat-btn'));
+            }
+        });
+
+        window.saveMovieToLibrary = function(id) {
+            if(!id) return; const movie = globalMovieData[id];
+            if(!myDownloads.find(m => m.id === movie.id)) { myDownloads.push(movie); setStorage('moizflix_downloads', myDownloads); window.showCustomAlert("Added", "Saved to My List", "success"); }
+            else window.showCustomAlert("Oops", "Already in My List", "warning");
+        }
+        window.saveHeroMovie = function(type) { saveMovieToLibrary(type === 'home' ? homeHeroMovieId : seriesHeroMovieId); }
+        window.playHeroMovie = function(type) { playMovie(type === 'home' ? homeHeroMovieId : seriesHeroMovieId); }
+
+        window.loadDownloadsView = function() {
+            myDownloads = getStorage('moizflix_downloads', myDownloads);
+            const grid = document.getElementById('downloads-grid');
+            if(myDownloads.length === 0) { grid.innerHTML = `<p class="col-span-full text-center mt-10 text-gray-500 text-sm">Your list is empty.</p>`; return; }
+            renderMovieCards(myDownloads, 'downloads-grid', null);
+        }
+
+        window.clearDownloads = function() {
+            if(confirm("Clear your entire list?")) {
+                try { localStorage.removeItem('moizflix_downloads'); } catch(e){}
+                myDownloads = []; loadDownloadsView();
+                window.showCustomAlert("Cleared", "Your List is empty.", "success");
+            }
+        }
+
+        window.loadSeasons = async function(tvId) {
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/tv/${tvId}?api_key=${API_KEY}`);
+                const data = await res.json();
+                const seasonSelect = document.getElementById('season-select');
+                seasonSelect.innerHTML = '';
+                data.seasons.forEach(s => {
+                    if(s.season_number > 0) { 
+                        seasonSelect.innerHTML += `<option value="${s.season_number}">Season ${s.season_number}</option>`;
+                    }
+                });
+                if(data.seasons.length > 0) loadEpisodes(tvId, seasonSelect.value);
+            } catch(e){}
+        }
+
+        window.loadEpisodes = async function(tvId, seasonNum) {
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/tv/${tvId}/season/${seasonNum}?api_key=${API_KEY}`);
+                const data = await res.json();
+                const epSelect = document.getElementById('episode-select');
+                epSelect.innerHTML = '';
+                data.episodes.forEach(e => {
+                    epSelect.innerHTML += `<option value="${e.episode_number}">Ep ${e.episode_number}: ${e.name}</option>`;
+                });
+            } catch(e){}
+        }
+
+        window.showMovieDetails = function(id) {
+            currentDetailMovieId = id; const movie = globalMovieData[id];
+            
+            const isPro = isPremiumMovie(id);
+            if(isPro) {
+                document.getElementById('detail-pro-badge').classList.remove('hidden');
+                document.getElementById('detail-pro-badge').classList.add('flex');
+            } else {
+                document.getElementById('detail-pro-badge').classList.add('hidden');
+                document.getElementById('detail-pro-badge').classList.remove('flex');
+            }
+
+            document.getElementById('detail-backdrop').src = movie.backdrop_path ? (BACKDROP_URL + movie.backdrop_path) : (IMG_URL + movie.poster_path);
+            document.getElementById('detail-title').innerText = movie.title || movie.name;
+            document.getElementById('detail-year').innerText = movie.release_date ? movie.release_date.split('-')[0] : (movie.first_air_date ? movie.first_air_date.split('-')[0] : "");
+            document.getElementById('detail-type').innerText = movie.is_tv ? "SERIES" : "MOVIE";
+            document.getElementById('detail-overview').innerText = movie.overview || "No description available.";
+            
+            const tvControls = document.getElementById('tv-controls');
+            if(movie.is_tv) {
+                tvControls.classList.remove('hidden'); tvControls.classList.add('flex');
+                loadSeasons(id);
+            } else {
+                tvControls.classList.add('hidden'); tvControls.classList.remove('flex');
+            }
+
+            const detailsModal = document.getElementById('details-modal');
+            detailsModal.classList.remove('hidden'); detailsModal.classList.add('flex');
+            if(typeof gsap !== 'undefined') gsap.fromTo(detailsModal, { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.3 });
+        }
+
+        window.closeDetails = function() {
+            const detailsModal = document.getElementById('details-modal');
+            if(typeof gsap !== 'undefined') gsap.to(detailsModal, { opacity: 0, y: 50, duration: 0.2, onComplete: () => { detailsModal.classList.add('hidden'); detailsModal.classList.remove('flex'); }});
+            else { detailsModal.classList.add('hidden'); detailsModal.classList.remove('flex'); }
+        }
+
+        window.playMovie = function(id) {
+            if(!id) return; 
+            
+            const isPro = isPremiumMovie(id);
+            const isUserPremium = localStorage.getItem('user_premium_status') === 'true';
+            
+            if (isPro && !isUserPremium) {
+                openSubModal();
+                return;
+            }
+
+            currentPlayingMovieId = id;
+            const playerModal = document.getElementById('player-modal');
+            playerModal.classList.remove('hidden');
+            if(typeof gsap !== 'undefined') gsap.fromTo(playerModal, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+            
+            changeServer('vidlink', document.getElementById('btn-vidlink'));
+        }
+
+        window.changeServer = function(serverType, btnElement) {
+            document.querySelectorAll('.server-btn').forEach(btn => { btn.classList.remove('bg-red-accent', 'text-white', 'shadow-lg'); btn.classList.add('bg-black/60', 'text-gray-300'); });
+            if(btnElement) { btnElement.classList.remove('bg-black/60', 'text-gray-300'); btnElement.classList.add('bg-red-accent', 'text-white', 'shadow-lg'); }
+            
+            const videoFrame = document.getElementById('video-frame');
+            const movie = globalMovieData[currentPlayingMovieId];
+            const isTv = movie.is_tv;
+            
+            let s = 1, e = 1;
+            if(isTv) {
+                const sSelect = document.getElementById('season-select');
+                const eSelect = document.getElementById('episode-select');
+                if(sSelect && sSelect.value) s = sSelect.value;
+                if(eSelect && eSelect.value) e = eSelect.value;
+            }
+
+            if (serverType === 'vidlink') {
+                videoFrame.src = isTv ? `https://vidlink.pro/tv/${movie.id}/${s}/${e}` : `https://vidlink.pro/movie/${movie.id}`;
+            } else if (serverType === 'smashy') {
+                videoFrame.src = isTv ? `https://player.smashy.stream/tv/${movie.id}?s=${s}&e=${e}` : `https://player.smashy.stream/movie/${movie.id}`;
+            } else if (serverType === 'autoembed') {
+                videoFrame.src = isTv ? `https://autoembed.co/tv/tmdb/${movie.id}-${s}-${e}` : `https://autoembed.co/movie/tmdb/${movie.id}`;
+            }
+        }
+
+        window.closePlayer = function() {
+            const playerModal = document.getElementById('player-modal');
+            if(typeof gsap !== 'undefined') gsap.to(playerModal, { opacity: 0, duration: 0.2, onComplete: () => { playerModal.classList.add('hidden'); document.getElementById('video-frame').src = ""; currentPlayingMovieId = null; }});
+            else { playerModal.classList.add('hidden'); document.getElementById('video-frame').src = ""; currentPlayingMovieId = null; }
+        }
+
+        if (typeof THREE !== 'undefined') {
+            try {
+                const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
+                document.getElementById('canvas-container').appendChild(renderer.domElement);
+                const geometry = new THREE.BufferGeometry(); const vertices = [];
+                for (let i = 0; i < 1500; i++) vertices.push((Math.random() - 0.5) * 2000, (Math.random() - 0.5) * 2000, -Math.random() * 2000);
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                const particles = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xE50914, size: 2.5, transparent: true, opacity: 0.5 }));
+                scene.add(particles); camera.position.z = 1;
+                function animate3D() { requestAnimationFrame(animate3D); const positions = particles.geometry.attributes.position.array; for (let i = 2; i < positions.length; i += 3) { positions[i] += 3; if (positions[i] > 100) positions[i] = -2000; } particles.geometry.attributes.position.needsUpdate = true; renderer.render(scene, camera); }
+                animate3D();
+            } catch(e) {}
+        }
+
+        if (typeof gsap !== 'undefined') {
+            gsap.from("#intro-title", { scale: 0.8, opacity: 0, duration: 1.5, ease: "power4.out", delay: 0.2 });
+            gsap.from("#intro-subtitle, #enter-btn", { y: 20, opacity: 0, duration: 1, stagger: 0.2, delay: 0.8 });
+        }
+
+        document.getElementById('enter-btn').addEventListener('click', () => {
+            const showAuth = () => {
+                document.getElementById('intro-screen').style.display = 'none';
+                const authScreen = document.getElementById('auth-screen'); authScreen.classList.remove('hidden');
+                if (typeof gsap !== 'undefined') gsap.from(authScreen, { opacity: 0, duration: 0.5 });
+            };
+            if (typeof gsap !== 'undefined') gsap.to("#intro-screen", { opacity: 0, duration: 0.5, onComplete: showAuth }); else showAuth();
+        });
+        
+        loadProfileData(); 
+    </script>
+</body>
+</html>
